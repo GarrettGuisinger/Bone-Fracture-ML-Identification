@@ -1,0 +1,21 @@
+description: Ultralytics best model trained on xr_bones_balanced.yaml
+author: Ultralytics
+date: '2025-12-19T12:44:34.700036'
+version: 8.3.230
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 512
+- 512
+names:
+  0: Fracture
+args:
+  batch: 1
+  fraction: 1.0
+  half: false
+  int8: false
+  nms: false
+channels: 3
