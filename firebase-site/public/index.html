@@ -3,12 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YOLOv8 Fracture Detection</title>
 
-  <title>Image Upload & Preview</title>
-
-  <!-- Firebase core (only if you ever need it; safe to leave or remove) -->
-  <script defer src="/__/firebase/12.6.0/firebase-app-compat.js"></script>
-  <script defer src="/__/firebase/init.js"></script>
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
   <style>
     body {
@@ -22,11 +20,10 @@
       margin-bottom: 20px;
     }
 
-    #preview {
+    #canvas {
       margin-top: 20px;
       max-width: 400px;
       max-height: 400px;
-      display: none;
       border: 3px solid #ccc;
       border-radius: 6px;
     }
@@ -36,25 +33,82 @@
 <body>
 
   <h1>Upload an Image</h1>
-
   <input type="file" id="imageInput" accept="image/*">
-
-  <img id="preview" alt="Your image will appear here">
+  <canvas id="canvas"></canvas>
 
   <script>
-    const input = document.getElementById("imageInput");
-    const preview = document.getElementById("preview");
+    let model;
 
-    input.addEventListener("change", function (event) {
+    // Load YOLOv8 TF.js model
+    async function loadModel() {
+      try {
+        model = await tf.loadGraphModel('YOLOv8_web_model/model.json'); // relative path
+        console.log("Model loaded!");
+      } catch (err) {
+        console.error("Error loading model:", err);
+      }
+    }
+
+    // Preprocess image to match YOLO input size
+    function preprocess(img) {
+      return tf.tidy(() => {
+        const tensor = tf.browser.fromPixels(img)
+          .resizeBilinear([512, 512])  // <- updated from 416 to 512
+          .div(255.0)
+          .expandDims(0);
+        return tensor;
+      });
+    }
+
+    // Draw dummy bounding box (replace with real YOLO decoding later)
+    function drawBoxes(canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 2;
+      ctx.font = "16px Arial";
+      ctx.fillStyle = "red";
+
+      // Example box
+      ctx.strokeRect(50, 50, 100, 100);
+      ctx.fillText("Fracture?", 50, 45);
+    }
+
+    const input = document.getElementById("imageInput");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    input.addEventListener("change", async function(event) {
       const file = event.target.files[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        preview.src = e.target.result;
-        preview.style.display = "block";
-      };
-      reader.readAsDataURL(file);
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+
+      img.onload = async () => {
+        // Resize canvas to match image
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        // Load model if not already loaded
+        if (!model) await loadModel();
+
+        // Preprocess and run inference
+        const inputTensor = preprocess(img);
+        let output;
+        try {
+          output = await model.executeAsync(inputTensor);
+          console.log("Inference done", output);
+        } catch (err) {
+          console.error("Error during inference:", err);
+        }
+
+        // Draw dummy box (replace with YOLO decoding later)
+        drawBoxes(canvas);
+
+        // Clean up tensors
+        tf.dispose([inputTensor, output]);
+      }
     });
   </script>
 
