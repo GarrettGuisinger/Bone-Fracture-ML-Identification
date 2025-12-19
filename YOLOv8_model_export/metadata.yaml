@@ -1,6 +1,6 @@
 description: Ultralytics best model trained on xr_bones_balanced.yaml
 author: Ultralytics
-date: '2025-12-19T12:44:34.700036'
+date: '2025-12-19T13:16:21.270659'
 version: 8.3.230
 license: AGPL-3.0 License (https://ultralytics.com/license)
 docs: https://docs.ultralytics.com
@@ -16,6 +16,6 @@ args:
   batch: 1
   fraction: 1.0
   half: false
-  int8: false
+  int8: true
   nms: false
 channels: 3
