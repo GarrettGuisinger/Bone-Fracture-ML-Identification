@@ -74,6 +74,8 @@ def extract_hog_features(img_path):
     
     return blocksArr.flatten()
 
+Dataset = 3
+
 """ First Dataset Used
 base_path = "Bone Fractures Detection"
 
@@ -119,67 +121,133 @@ print(len(test_image_paths))
 print(len(test_labels))
 """
 
+if Dataset == 2:
+    base_path = "Dataset"
+    healthyCount = 0
+    unhealthyCount = 0
 
-base_path = "Dataset"
-healthyCount = 0
-unhealthyCount = 0
+    #Load Train Data
+    train_image_paths_healthy = []
+    train_labels_healthy = []
+    train_image_paths_unhealthy = []
+    train_labels_unhealthy = []
+    train_image_paths = []
+    train_labels = []
+    for filename in sorted(os.listdir(f"{base_path}/images/train")):
+        if filename.endswith(('.png')):
+            label_file = os.path.join(base_path, "labels", "train", os.path.splitext(filename)[0] + '.txt')
+            img_path = os.path.join(base_path, "images", "train", filename)
+            if not os.path.exists(label_file):
+                continue
+            if os.path.getsize(label_file) == 0:
+                continue  
+            path = os.path.join(base_path, "images", "train", filename)
+            with open(label_file, 'r') as f:
+                class_id = int(f.read().strip().split()[0])
+                if class_id >= 0 and class_id <= 4: #Bone Fracture
+                    train_image_paths_unhealthy.append(path)
+                    train_labels_unhealthy.append(1)
+                    unhealthyCount += 1
+                else:
+                    train_image_paths_healthy.append(path)
+                    train_labels_healthy.append(0)
+                    healthyCount += 1
 
-#Load Train Data
-train_image_paths_healthy = []
-train_labels_healthy = []
-train_image_paths_unhealthy = []
-train_labels_unhealthy = []
-train_image_paths = []
-train_labels = []
-for filename in sorted(os.listdir(f"{base_path}/images/train")):
-    if filename.endswith(('.png')):
-        label_file = os.path.join(base_path, "labels", "train", os.path.splitext(filename)[0] + '.txt')
-        img_path = os.path.join(base_path, "images", "train", filename)
-        if not os.path.exists(label_file):
-            continue
-        if os.path.getsize(label_file) == 0:
-            continue  
-        path = os.path.join(base_path, "images", "train", filename)
-        with open(label_file, 'r') as f:
-            class_id = int(f.read().strip().split()[0])
-            if class_id >= 0 and class_id <= 4: #Bone Fracture
-                train_image_paths_unhealthy.append(path)
-                train_labels_unhealthy.append(1)
-                unhealthyCount += 1
-            else:
-                train_image_paths_healthy.append(path)
-                train_labels_healthy.append(0)
-                healthyCount += 1
+    if len(train_image_paths_unhealthy) > len(train_image_paths_healthy):
+        train_image_paths_unhealthy = train_image_paths_unhealthy[:len(train_image_paths_healthy)]
+        train_labels_unhealthy = train_labels_unhealthy[:len(train_labels_healthy)]
+    else:
+        train_image_paths_healthy = train_image_paths_healthy[:len(train_image_paths_unhealthy)]
+        train_labels_healthy = train_labels_healthy[:len(train_labels_unhealthy)]
 
-if len(train_image_paths_unhealthy) > len(train_image_paths_healthy):
-    train_image_paths_unhealthy = train_image_paths_unhealthy[:len(train_image_paths_healthy)]
-    train_labels_unhealthy = train_labels_unhealthy[:len(train_labels_healthy)]
-else:
-    train_image_paths_healthy = train_image_paths_healthy[:len(train_image_paths_unhealthy)]
-    train_labels_healthy = train_labels_healthy[:len(train_labels_unhealthy)]
+    # Load Test Data
+    test_image_paths = []
+    test_labels = []
+    count = 0
+    for filename in sorted(os.listdir(f"{base_path}/images/val")):
+        if filename.endswith(('.png')):
+            label_file = os.path.join(base_path, "labels", "val", os.path.splitext(filename)[0] + '.txt')
+            img_path = os.path.join(base_path, "images", "val", filename)
+            if not os.path.exists(label_file):
+                continue
+            if os.path.getsize(label_file) == 0:
+                continue  
+            test_image_paths.append(os.path.join(base_path, "images", "val", filename))
+            with open(label_file, 'r') as f:
+                class_id = int(f.read().strip().split()[0])
+                if class_id >= 0 and class_id <= 4: #Bone Fracture
+                    test_labels.append(1)
+                else:
+                    test_labels.append(0)
 
-# Load Test Data
-test_image_paths = []
-test_labels = []
-count = 0
-for filename in sorted(os.listdir(f"{base_path}/images/val")):
-    if filename.endswith(('.png')):
-        label_file = os.path.join(base_path, "labels", "val", os.path.splitext(filename)[0] + '.txt')
-        img_path = os.path.join(base_path, "images", "val", filename)
-        if not os.path.exists(label_file):
-            continue
-        if os.path.getsize(label_file) == 0:
-            continue  
-        test_image_paths.append(os.path.join(base_path, "images", "val", filename))
-        with open(label_file, 'r') as f:
-            class_id = int(f.read().strip().split()[0])
-            if class_id >= 0 and class_id <= 4: #Bone Fracture
-                test_labels.append(1)
-            else:
-                test_labels.append(0)
+if (Dataset == 3):
+    base_path = "rawdataset"
+    healthyCount = 0
+    unhealthyCount = 0
+
+    # Load Train Data
+    train_image_paths_healthy = []
+    train_labels_healthy = []
+    train_image_paths_unhealthy = []
+    train_labels_unhealthy = []
+    train_image_paths = []
+    train_labels = []
+
+    for filename in sorted(os.listdir(f"{base_path}/train/images")):
+        if filename.endswith('.jpg'):
+            label_file = os.path.join(base_path, "train", "labels", os.path.splitext(filename)[0] + '.txt')
+            img_path = os.path.join(base_path, "train", "images", filename)
+
+            if not os.path.exists(label_file):
+                continue
+            if os.path.getsize(label_file) == 0:
+                continue  
+
+            with open(label_file, 'r') as f:
+                class_id = int(f.read().strip().split()[0])
+                if class_id == 0:  # Bone Fracture
+                    train_image_paths_unhealthy.append(img_path)
+                    train_labels_unhealthy.append(1)
+                    unhealthyCount += 1
+                else:
+                    train_image_paths_healthy.append(img_path)
+                    train_labels_healthy.append(0)
+                    healthyCount += 1
+
+    # Balance healthy/unhealthy
+    if len(train_image_paths_unhealthy) > len(train_image_paths_healthy):
+        train_image_paths_unhealthy = train_image_paths_unhealthy[:len(train_image_paths_healthy)]
+        train_labels_unhealthy = train_labels_unhealthy[:len(train_labels_healthy)]
+    else:
+        train_image_paths_healthy = train_image_paths_healthy[:len(train_image_paths_unhealthy)]
+        train_labels_healthy = train_labels_healthy[:len(train_labels_unhealthy)]
+
+    train_image_paths = train_image_paths_healthy + train_image_paths_unhealthy
+    train_labels = train_labels_healthy + train_labels_unhealthy
+
+    # Load Test Data
+    test_image_paths = []
+    test_labels = []
+
+    for filename in sorted(os.listdir(f"{base_path}/test/images")):
+        if filename.endswith('.jpg'):
+            label_file = os.path.join(base_path, "test", "labels", os.path.splitext(filename)[0] + '.txt')
+            img_path = os.path.join(base_path, "test", "images", filename)
+
+            if not os.path.exists(label_file):
+                continue
+            if os.path.getsize(label_file) == 0:
+                continue  
+            test_image_paths.append(img_path)
+            with open(label_file, 'r') as f:
+                class_id = int(f.read().strip().split()[0])
+                if class_id == 0:  # Bone Fracture
+                    test_labels.append(1)
+                else:
+                    test_labels.append(0)
 
 #Select Random Samples
-randomTrainSamples = random.sample(range(len(train_image_paths_healthy)), len(train_image_paths_healthy))
+randomTrainSamples = random.sample(range(len(train_image_paths_healthy)), 500) #len(train_image_paths_healthy))
 train_image_paths = [train_image_paths_healthy[i] for i in randomTrainSamples] + [train_image_paths_unhealthy[i] for i in randomTrainSamples]
 train_labels = [train_labels_healthy[i] for i in randomTrainSamples] + [train_labels_unhealthy[i] for i in randomTrainSamples]
 
