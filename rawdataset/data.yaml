@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 2
+names: ['fracture', 'non fracture']
+
+roboflow:
+  workspace: shoriful-islam-meipc
+  project: bone-fracture-detection-rb8cd
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/shoriful-islam-meipc/bone-fracture-detection-rb8cd/dataset/1
