@@ -3,112 +3,409 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YOLOv8 Fracture Detection</title>
+  <title>Fracture Detection</title>
 
   <!-- TensorFlow.js -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
   <style>
-    body {
-      background: #f5f5f5;
-      font-family: Arial, sans-serif;
+    * {
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0e27;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #fff;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
     }
 
     h1 {
+      font-size: 36px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .subtitle {
+      color: #8b92b0;
+      margin-bottom: 40px;
+      font-size: 18px;
+    }
+
+    .upload-section {
+      background: #141a35;
+      border: 2px solid #1e2847;
+      border-radius: 12px;
+      padding: 60px 40px;
+      text-align: center;
+      margin-bottom: 30px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .upload-section:hover {
+      border-color: #2d3a5f;
+    }
+
+    #imageInput {
+      display: none;
+    }
+
+    .upload-text {
+      color: #8b92b0;
+      font-size: 18px;
       margin-bottom: 20px;
     }
 
-    #canvas {
-      margin-top: 20px;
-      max-width: 400px;
-      max-height: 400px;
-      border: 3px solid #ccc;
+    .btn-upload {
+      background: #fff;
+      color: #0a0e27;
+      border: none;
+      padding: 14px 32px;
       border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-upload:hover {
+      background: #e8e8e8;
+    }
+
+    #status {
+      background: #141a35;
+      border: 1px solid #1e2847;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 16px;
+      color: #8b92b0;
+      margin-bottom: 30px;
+      display: none;
+    }
+
+    #status.show {
+      display: block;
+    }
+
+    .results-section {
+      display: none;
+    }
+
+    .results-section.show {
+      display: block;
+    }
+
+    .canvas-container {
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    #canvas {
+      max-width: 100%;
+      display: block;
+    }
+
+    #confidence {
+      background: #141a35;
+      border: 1px solid #1e2847;
+      border-radius: 8px;
+      padding: 20px;
+      display: none;
+    }
+
+    #confidence.show {
+      display: block;
+    }
+
+    .confidence-value {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .confidence-label {
+      color: #8b92b0;
+      font-size: 18px;
+    }
+
+    .detection-count {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #1e2847;
+      color: #8b92b0;
+      font-size: 16px;
     }
   </style>
 </head>
 
 <body>
 
-  <h1>Upload an Image</h1>
-  <input type="file" id="imageInput" accept="image/*">
-  <canvas id="canvas"></canvas>
+  <div class="container">
+    <h1>YOLOv8 Bone Fracture Detection</h1>
+
+    <div class="upload-section" onclick="document.getElementById('imageInput').click()">
+      <div class="upload-text">Click to upload X-ray image</div>
+      <button class="btn-upload">Select File</button>
+      <input type="file" id="imageInput" accept="image/*">
+    </div>
+
+    <div id="status">
+      <span id="statusText">Loading model...</span>
+    </div>
+
+    <div class="results-section" id="resultsSection">
+      <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
+      
+      <div id="confidence"></div>
+    </div>
+  </div>
 
   <script>
     let model;
+    const statusDiv = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+    const confidenceDiv = document.getElementById('confidence');
+    const resultsSection = document.getElementById('resultsSection');
 
-    // Load YOLOv8 TF.js model
     async function loadModel() {
       try {
-        model = await tf.loadGraphModel('YOLOv8_web_model/model.json'); // relative path
+        statusText.textContent = 'Loading model...';
+        statusDiv.classList.add('show');
+        model = await tf.loadGraphModel('YOLOv8_web_model/model.json');
+        statusText.textContent = 'Model loaded';
+        setTimeout(() => statusDiv.classList.remove('show'), 2000);
         console.log("Model loaded!");
       } catch (err) {
+        statusText.textContent = 'Error loading model: ' + err.message;
         console.error("Error loading model:", err);
       }
     }
 
-    // Preprocess image to match YOLO input size
-    function preprocess(img) {
+    function preprocess(canvas) {
       return tf.tidy(() => {
-        const tensor = tf.browser.fromPixels(img)
-          .resizeBilinear([512, 512])  // <- updated from 416 to 512
+        const tensor = tf.browser.fromPixels(canvas)
+          .resizeBilinear([640, 640])
           .div(255.0)
           .expandDims(0);
         return tensor;
       });
     }
 
-    // Draw dummy bounding box (replace with real YOLO decoding later)
-    function drawBoxes(canvas) {
-      const ctx = canvas.getContext('2d');
-      ctx.strokeStyle = 'red';
-      ctx.lineWidth = 2;
-      ctx.font = "16px Arial";
-      ctx.fillStyle = "red";
+    function decodeYOLO(output, imgWidth, imgHeight, confThreshold = 0.25, iouThreshold = 0.45) {
+      const boxes = [];
+      const data = output.dataSync();
+      const shape = output.shape;
+      
+      console.log("=== YOLO OUTPUT DEBUG ===");
+      console.log("Shape:", shape);
+      console.log("Total values:", data.length);
+      
+      if (shape.length !== 3 || shape[1] !== 5) {
+        console.error("Unexpected shape! Expected [1, 5, N]");
+        statusText.textContent = `Error: Unexpected output shape ${shape}`;
+        return boxes;
+      }
 
-      // Example box
-      ctx.strokeRect(50, 50, 100, 100);
-      ctx.fillText("Fracture?", 50, 45);
+      const numPredictions = shape[2];
+      console.log(`Processing ${numPredictions} predictions`);
+      
+      let maxConf = 0;
+      let confAboveThreshold = 0;
+      
+      for (let i = 0; i < numPredictions; i++) {
+        const x = data[i];
+        const y = data[i + numPredictions];
+        const w = data[i + 2 * numPredictions];
+        const h = data[i + 3 * numPredictions];
+        const confidence = data[i + 4 * numPredictions];
+        
+        if (confidence > maxConf) maxConf = confidence;
+        
+        if (i < 10) {
+          console.log(`Pred ${i}: x=${x.toFixed(1)} y=${y.toFixed(1)} w=${w.toFixed(1)} h=${h.toFixed(1)}`);
+        }
+        
+        if (confidence > confThreshold) {
+          confAboveThreshold++;
+          const x1 = (x - w / 2) * imgWidth / 640;
+          const y1 = (y - h / 2) * imgHeight / 640;
+          const x2 = (x + w / 2) * imgWidth / 640;
+          const y2 = (y + h / 2) * imgHeight / 640;
+          
+          boxes.push({ x1, y1, x2, y2, confidence, class: 1 });
+        }
+      }
+
+      console.log(`Max confidence found: ${maxConf.toFixed(2)}`);
+      console.log(`Boxes above threshold (${confThreshold}): ${confAboveThreshold}`);
+      
+      const finalBoxes = applyNMS(boxes, iouThreshold);
+      console.log(`After NMS: ${finalBoxes.length} boxes`);
+      
+      return finalBoxes;
+    }
+
+    function applyNMS(boxes, iouThreshold) {
+      boxes.sort((a, b) => b.confidence - a.confidence);
+      const keep = [];
+      
+      while (boxes.length > 0) {
+        const current = boxes.shift();
+        keep.push(current);
+        
+        boxes = boxes.filter(box => {
+          const iou = calculateIOU(current, box);
+          return iou < iouThreshold;
+        });
+      }
+      
+      return keep;
+    }
+
+    function calculateIOU(box1, box2) {
+      const x1 = Math.max(box1.x1, box2.x1);
+      const y1 = Math.max(box1.y1, box2.y1);
+      const x2 = Math.min(box1.x2, box2.x2);
+      const y2 = Math.min(box1.y2, box2.y2);
+      
+      const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+      const area1 = (box1.x2 - box1.x1) * (box1.y2 - box1.y1);
+      const area2 = (box2.x2 - box2.x1) * (box2.y2 - box2.y1);
+      const union = area1 + area2 - intersection;
+      
+      return intersection / union;
+    }
+
+    function drawBoxes(canvas, boxes) {
+      const ctx = canvas.getContext('2d');
+      
+      boxes.forEach((box, idx) => {
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1);
+        
+        const label = `${(box.confidence * 100).toFixed(1)}%`;
+        ctx.font = "14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+        const textWidth = ctx.measureText(label).width;
+        
+        ctx.fillStyle = '#ff4444';
+        ctx.fillRect(box.x1, box.y1 - 24, textWidth + 16, 24);
+        
+        ctx.fillStyle = '#fff';
+        ctx.fillText(label, box.x1 + 8, box.y1 - 7);
+      });
     }
 
     const input = document.getElementById("imageInput");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
+    loadModel();
+
     input.addEventListener("change", async function(event) {
       const file = event.target.files[0];
       if (!file) return;
+
+      resultsSection.classList.add('show');
+      statusDiv.classList.add('show');
+      confidenceDiv.classList.remove('show');
 
       const img = new Image();
       img.src = URL.createObjectURL(file);
 
       img.onload = async () => {
-        // Resize canvas to match image
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
+        const maxSize = 640;
+        let drawWidth = img.width;
+        let drawHeight = img.height;
+        
+        if (img.width > img.height) {
+          drawWidth = maxSize;
+          drawHeight = (img.height / img.width) * maxSize;
+        } else {
+          drawHeight = maxSize;
+          drawWidth = (img.width / img.height) * maxSize;
+        }
+        
+        canvas.width = maxSize;
+        canvas.height = maxSize;
+        
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, maxSize, maxSize);
+        
+        const offsetX = (maxSize - drawWidth) / 2;
+        const offsetY = (maxSize - drawHeight) / 2;
+        
+        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
-        // Load model if not already loaded
-        if (!model) await loadModel();
-
-        // Preprocess and run inference
-        const inputTensor = preprocess(img);
-        let output;
-        try {
-          output = await model.executeAsync(inputTensor);
-          console.log("Inference done", output);
-        } catch (err) {
-          console.error("Error during inference:", err);
+        if (!model) {
+          statusText.textContent = 'Waiting for model...';
+          return;
         }
 
-        // Draw dummy box (replace with YOLO decoding later)
-        drawBoxes(canvas);
+        statusText.textContent = 'Processing...';
+        console.log("=== NEW IMAGE ===");
+        console.log(`Original size: ${img.width}x${img.height}`);
+        console.log(`Display size: ${drawWidth.toFixed(0)}x${drawHeight.toFixed(0)}`);
 
-        // Clean up tensors
+        const inputTensor = preprocess(canvas);
+        let output;
+        let boxes = [];
+        
+        try {
+          output = await model.executeAsync(inputTensor);
+          const outputTensor = Array.isArray(output) ? output[0] : output;
+          
+          boxes = decodeYOLO(outputTensor, 640, 640);
+          
+          const data = outputTensor.dataSync();
+          const shape = outputTensor.shape;
+          const allConfidences = [];
+          for (let i = 0; i < shape[2]; i++) {
+            allConfidences.push(data[i + 4 * shape[2]]);
+          }
+          const maxConfidence = Math.max(...allConfidences);
+          
+          if (boxes.length > 0) {
+            drawBoxes(canvas, boxes);
+            confidenceDiv.innerHTML = `
+              <div class="confidence-value">${(maxConfidence * 100).toFixed(2)}%</div>
+              <div class="confidence-label">Highest confidence</div>
+              <div class="detection-count">${boxes.length} fracture region${boxes.length > 1 ? 's' : ''} detected</div>
+            `;
+          } else {
+            confidenceDiv.innerHTML = `
+              <div class="confidence-value">${(maxConfidence * 100).toFixed(2)}%</div>
+              <div class="confidence-label">Highest confidence</div>
+              <div class="detection-count">No fractures detected</div>
+            `;
+          }
+          
+          statusDiv.classList.remove('show');
+          confidenceDiv.classList.add('show');
+          
+        } catch (err) {
+          console.error("Error during inference:", err);
+          statusText.textContent = 'Error: ' + err.message;
+        }
+
         tf.dispose([inputTensor, output]);
-      }
+      };
     });
   </script>
 
